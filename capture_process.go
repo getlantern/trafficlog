@@ -70,7 +70,7 @@ type captureProcess struct {
 // startCapture for the input address, saving packets to the provided buffer. Non-blocking.
 func startCapture(
 	addr string, buffer *sharedBufferHook, dataPool *bpool.BufferPool,
-	f MutatorFactory, mtuLimit int, statsInterval time.Duration) (*captureProcess, error) {
+	f MutatorFactory, statsInterval time.Duration) (*captureProcess, error) {
 
 	proc := captureProcess{
 		buffer:    buffer,
@@ -82,15 +82,14 @@ func startCapture(
 		f:         f,
 	}
 	initErr := make(chan error)
-	go proc.watchRoutes(addr, mtuLimit, statsInterval, initErr)
+	go proc.watchRoutes(addr, statsInterval, initErr)
 	if err := <-initErr; err != nil {
 		return nil, err
 	}
 	return &proc, nil
 }
 
-func (cp *captureProcess) watchRoutes(
-	addr string, mtuLimit int, statsInterval time.Duration, initErr chan error) {
+func (cp *captureProcess) watchRoutes(addr string, statsInterval time.Duration, initErr chan error) {
 
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -100,10 +99,6 @@ func (cp *captureProcess) watchRoutes(
 	}
 
 	startRouteCapture := func(u routeUpdate) (stopChan chan struct{}, err error) {
-		if u.iface.mtu() > mtuLimit {
-			return nil, fmt.Errorf("interface MTU (%d) exceeds the MTU limit (%d)", u.iface.mtu(), mtuLimit)
-		}
-
 		handle, err := pcap.OpenLive(u.iface.pcapName(), int32(u.iface.mtu()), false, packetReadTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open capture handle: %w", err)

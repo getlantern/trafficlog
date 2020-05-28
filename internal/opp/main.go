@@ -144,7 +144,6 @@ func memstatsFor(packetSize, bufferSize int, separateProcess bool) (*memStats, e
 	}
 
 	opts := trafficlog.Options{
-		MTULimit:       trafficlog.MTULimitNone,
 		MutatorFactory: newFactory(int(*flagPacketSize)),
 	}
 	tl := trafficlog.New(bufferSize, bufferSize, &opts)

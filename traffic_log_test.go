@@ -32,7 +32,7 @@ func TestTrafficLog(t *testing.T) {
 	// Make the buffers large enough that we will not lose any packets.
 	const captureBufferSize, saveBufferSize = 1024 * 1024, 1024 * 1024
 
-	tl := New(captureBufferSize, saveBufferSize, &Options{MTULimit: MTULimitNone})
+	tl := New(captureBufferSize, saveBufferSize, nil)
 	tltest.TestTrafficLog(t, testTrafficLog{tl})
 }
 

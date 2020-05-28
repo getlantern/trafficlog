@@ -4,7 +4,6 @@ package trafficlog
 import (
 	"fmt"
 	"io"
-	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -33,12 +32,6 @@ const (
 	// reports aggregated stats. This keeps the aggregated stats current.
 	procStatsPerLogStats = 5
 )
-
-// DefaultMaxMTU is the default maximum acceptable MTU size of interfaces watched by traffic logs.
-const DefaultMaxMTU = 1500
-
-// MTULimitNone can be used to specify that there should be no limit to accepted MTU sizes.
-const MTULimitNone = int(math.MaxInt32)
 
 // DefaultStatsInterval is the default interval at which a traffic log outputs statistics.
 const DefaultStatsInterval = 15 * time.Second
@@ -150,13 +143,6 @@ func (st *statsTracker) close() {
 
 // Options for running a traffic log.
 type Options struct {
-	// MTULimit is the largest acceptable MTU size for interfaces watched by a traffic log. This can
-	// be important in preventing the capture and save buffers from becoming far larger than
-	// expected, which would have a significant impact on memory pressure.
-	//
-	// Defaults to DefaultMaxMTU.
-	MTULimit int
-
 	// A MutatorFactory is used to govern mutations which are made to packets upon capture. The
 	// functions produced by this factory need not be concurrency-safe themselves, but separate
 	// mutators may be called concurrently. These mutators must be capabale of keeping up with
@@ -169,13 +155,6 @@ type Options struct {
 	//
 	// Defaults to DefaultStatsInterval
 	StatsInterval time.Duration
-}
-
-func (opts Options) mtuLimit() int {
-	if opts.MTULimit == 0 {
-		return DefaultMaxMTU
-	}
-	return opts.MTULimit
 }
 
 func (opts Options) mutatorFactory() MutatorFactory {
@@ -209,7 +188,6 @@ type TrafficLog struct {
 	captureProcsLock sync.Mutex
 	statsTracker     *statsTracker
 	errorChan        chan error
-	mtuLimit         int
 	mutatorFactory   MutatorFactory
 	statsInterval    time.Duration
 }
@@ -237,7 +215,6 @@ func New(captureBytes, saveBytes int, opts *Options) *TrafficLog {
 		sync.Mutex{},
 		newStatsTracker(opts.statsInterval()),
 		make(chan error, channelBufferSize),
-		opts.mtuLimit(),
 		opts.mutatorFactory(),
 		opts.statsInterval(),
 	}
@@ -246,9 +223,6 @@ func New(captureBytes, saveBytes int, opts *Options) *TrafficLog {
 // UpdateAddresses updates the addresses for which traffic is being captured. Capture will begin (or
 // continue) for all addresses in the input slice. Capture will be stopped for any addresses not in
 // the input slice.
-//
-// If the network interface used to reach the address has an MTU exceeding MaxAcceptableMTU, this
-// will result in an error.
 //
 // If an error is returned, the addresses have not been updated. In other words, a partial update is
 // not possible.
@@ -270,7 +244,7 @@ func (tl *TrafficLog) UpdateAddresses(addresses []string) error {
 		} else {
 			proc, err := startCapture(
 				addr, tl.captureBuffer.newHook(), tl.capturePool,
-				tl.mutatorFactory, tl.mtuLimit, tl.statsInterval/procStatsPerLogStats)
+				tl.mutatorFactory, tl.statsInterval/procStatsPerLogStats)
 			if err != nil {
 				stopAllNewCaptures()
 				return fmt.Errorf("failed to start capture for %s: %w", addr, err)
