@@ -1,4 +1,6 @@
-// Package trafficlog provides a log for network traffic.
+// Package trafficlog provides a log for network traffic. This log captures packets going to or
+// coming from specified addresses and buffers these packets in memory. See the TrafficLog type and
+// the New function for more details.
 package trafficlog
 
 import (
@@ -221,8 +223,8 @@ func New(captureBytes, saveBytes int, opts *Options) *TrafficLog {
 }
 
 // UpdateAddresses updates the addresses for which traffic is being captured. Capture will begin (or
-// continue) for all addresses in the input slice. Capture will be stopped for any addresses not in
-// the input slice.
+// continue) for all addresses in the input slice. All packets going to or coming from any of these
+// addresses will be captured. Capture will be stopped for any addresses not in the input slice.
 //
 // If an error is returned, the addresses have not been updated. In other words, a partial update is
 // not possible.
